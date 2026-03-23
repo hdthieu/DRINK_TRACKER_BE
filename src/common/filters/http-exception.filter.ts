@@ -23,7 +23,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? exception.getResponse()
             : { message: 'Internal server error 🌸' };
 
-        const message = (exceptionResponse as any).message || 'Lỗi không xác định';
+        const message = typeof exceptionResponse === 'string'
+            ? exceptionResponse
+            : (exceptionResponse as any).message || exceptionResponse;
+
         const errorCode = (exceptionResponse as any).errorCode || 'UNKNOWN_ERROR';
 
         response.status(status).json({

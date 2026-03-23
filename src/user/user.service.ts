@@ -1,26 +1,42 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { S3Service } from '../common/s3.service';
 
 @Injectable()
 export class UserService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    private s3Service: S3Service,
+  ) { }
+
+  async myProfile(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['logs']
+    });
+    if (!user) throw new NotFoundException('User không tồn tại!');
+    return user;
   }
 
-  findAll() {
-    return `This action returns all user`;
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User không tồn tại!');
+
+    const imageUrl = await this.s3Service.uploadFile(file);
+    user.imageUrl = imageUrl;
+    return await this.userRepository.save(user);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
+  async update(userId: string, updateDto: UpdateUserDto) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User không tồn tại!');
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    // Cập nhật thông tin mới một cách nhẹ nhàng nhàng
+    Object.assign(user, updateDto);
+    return await this.userRepository.save(user);
   }
 }

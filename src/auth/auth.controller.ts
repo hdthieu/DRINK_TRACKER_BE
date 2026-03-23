@@ -3,24 +3,28 @@ import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-otp.dto';
+import { VerifyDto } from './dto/verify-otp.dto';
 
+interface RequestRegisterDto extends RequestOtpDto {
+    name: string;
+}
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
-    @Post('request')
-    async requestOtp(@Body() dto: RequestOtpDto) {
-        return this.authService.requestOtp(dto.email);
-    }
-
     @Post('login')
     async login(@Body() dto: LoginDto) {
-        return this.authService.verifyOtp(dto.email, dto.otp);
+        return this.authService.login(dto.email);
+    }
+
+    @Post('request-register')
+    async requestRegister(@Body() dto: RequestRegisterDto) {
+        return this.authService.requestRegister(dto.email, dto.name);
     }
 
     @Post('verify')
-    async verifyOtp(@Body() dto: LoginDto) {
+    async verifyOtp(@Body() dto: VerifyDto) {
         return this.authService.verifyOtp(dto.email, dto.otp);
     }
 
@@ -29,4 +33,3 @@ export class AuthController {
         return this.authService.refresh(dto.refresh_token);
     }
 }
-

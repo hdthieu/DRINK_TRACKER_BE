@@ -28,7 +28,7 @@ export class User {
     @OneToMany(() => Drinklog, (log) => log.user)
     logs: Drinklog[];
 
-    @Column()
+    @Column({ nullable: true })
     imageUrl: string;
 
     @OneToMany(() => HomeRecipe, (recipe) => recipe.user)

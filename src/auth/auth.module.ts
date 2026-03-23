@@ -15,9 +15,10 @@ import { join } from 'path';
         TypeOrmModule.forFeature([User]),
         PassportModule,
         JwtModule.registerAsync({
+            global: true,
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
+                secret: configService.getOrThrow<string>('JWT_SECRET'),
                 signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') as any },
             }),
             inject: [ConfigService],
@@ -26,15 +27,15 @@ import { join } from 'path';
             imports: [ConfigModule],
             useFactory: (config: ConfigService) => ({
                 transport: {
-                    host: config.get('MAIL_HOST'),
-                    port: config.get('MAIL_PORT'),
+                    host: config.getOrThrow<string>('MAIL_HOST'),
+                    port: config.getOrThrow<number>('MAIL_PORT'),
                     auth: {
-                        user: config.get('MAIL_USER'),
-                        pass: config.get('MAIL_PASS'),
+                        user: config.getOrThrow<string>('MAIL_USER'),
+                        pass: config.getOrThrow<string>('MAIL_PASS'),
                     },
                 },
                 defaults: {
-                    from: config.get('MAIL_FROM'),
+                    from: config.getOrThrow<string>('MAIL_FROM'),
                 },
                 template: {
                     dir: join(__dirname, 'templates'),

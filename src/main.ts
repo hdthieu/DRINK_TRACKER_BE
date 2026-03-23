@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,6 +10,13 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
+    exceptionFactory: (errors) => {
+      const result = errors.reduce((acc, error) => {
+        acc[error.property] = Object.values(error.constraints || {})[0];
+        return acc;
+      }, {});
+      return new BadRequestException(result);
+    },
   }));
 
   // Unified Success Wrapper
