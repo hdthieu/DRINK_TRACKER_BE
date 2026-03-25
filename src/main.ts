@@ -25,9 +25,9 @@ async function bootstrap() {
   // Unified Error Wrapper
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const port = process.env.PORT ?? 3001;
-  await app.listen(port);
-  console.log(`Backend is running on: http://localhost:${port}`);
+  const port = process.env.PORT || 8000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Backend is running on port: ${port}`);
 }
 
 
