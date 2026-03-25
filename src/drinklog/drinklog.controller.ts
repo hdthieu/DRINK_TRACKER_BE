@@ -1,34 +1,59 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DrinklogService } from './drinklog.service';
 import { CreateDrinklogDto } from './dto/create-drinklog.dto';
 import { UpdateDrinklogDto } from './dto/update-drinklog.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('drinklog')
 export class DrinklogController {
-  constructor(private readonly drinklogService: DrinklogService) {}
+  constructor(private readonly drinklogService: DrinklogService) { }
 
   @Post()
-  create(@Body() createDrinklogDto: CreateDrinklogDto) {
-    return this.drinklogService.create(createDrinklogDto);
+  create(@Req() req, @Body() createDrinklogDto: CreateDrinklogDto) {
+    const userId = req.user.sub;
+    return this.drinklogService.create(userId, createDrinklogDto);
+  }
+
+  @Post('/upload-image')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadImage(@UploadedFile() file: Express.Multer.File) {
+    return this.drinklogService.uploadImage(file);
   }
 
   @Get()
-  findAll() {
-    return this.drinklogService.findAll();
+  findAll(@Req() req) {
+    const userId = req.user.sub;
+    return this.drinklogService.findAllByUser(userId);
+  }
+
+  @Get('today')
+  findToday(@Req() req) {
+    const userId = req.user.sub;
+    return this.drinklogService.findTodayByUser(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.drinklogService.findOne(+id);
+  findOne(@Req() req, @Param('id') id: string) {
+    const userId = req.user.sub;
+    return this.drinklogService.findOne(userId, id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDrinklogDto: UpdateDrinklogDto) {
-    return this.drinklogService.update(+id, updateDrinklogDto);
+  update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() updateDrinklogDto: UpdateDrinklogDto,
+  ) {
+    const userId = req.user.sub;
+    return this.drinklogService.update(userId, id, updateDrinklogDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.drinklogService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Req() req, @Param('id') id: string) {
+  //   const userId = req.user.sub;
+  //   return this.drinklogService.remove(userId, id);
+  // }
 }
+

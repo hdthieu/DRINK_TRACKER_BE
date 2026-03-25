@@ -36,7 +36,7 @@ export class S3Service {
             return `https://${this.bucketName}.s3.${this.region}.amazonaws.com/${fileName}`;
         } catch (error) {
             console.error('S3 Upload Error:', error);
-            throw new Error('Không thể tải ảnh lên mây! 🏹');
+            throw new Error('Không thể tải ảnh lên!');
         }
     }
 }

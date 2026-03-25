@@ -8,27 +8,28 @@ export class DrinkType {
     @Column()
     name: string;
 
-    @Column()
+    @Column({ nullable: true })
+    description: string;
+
+    @Column({ nullable: true })
     imageUrl: string;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     caffeineMg: number;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     sugarG: number;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     calories: number;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     acidity: number;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     bitterness: number;
 
-    @Column()
+    @Column({ type: 'int', default: 0 })
     body: number;
 
-    @Column()
-    note: string;
 }
