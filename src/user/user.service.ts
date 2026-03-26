@@ -14,12 +14,17 @@ export class UserService {
   ) { }
 
   async myProfile(userId: string) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['logs']
-    });
-    if (!user) throw new NotFoundException('User không tồn tại!');
-    return user;
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        // relations: ['logs']
+      });
+      if (!user) throw new NotFoundException('User không tồn tại!');
+      return user;
+    } catch (error) {
+      console.error('Error in myProfile service:', error);
+      throw error;
+    }
   }
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {

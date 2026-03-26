@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, Max, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
@@ -28,6 +28,19 @@ export class UpdateUserDto {
     dailySugarLimit?: number;
 
     @IsOptional()
-    @IsString()
-    imageUrl?: string;
+    @Type(() => Number)
+    @IsNumber({}, { message: 'Tuổi phải là con số' })
+    @Min(0)
+    @Max(150)
+    age?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber({}, { message: 'Thời gian tập luyện phải là con số' })
+    @Min(0)
+    exerciseTimeMinutes?: number;
+
+    @IsOptional()
+    @IsBoolean()
+    isHighTemperature?: boolean;
 }

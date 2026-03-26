@@ -11,7 +11,6 @@ import { CreateDrinklogDto } from './dto/create-drinklog.dto';
 import { UpdateDrinklogDto } from './dto/update-drinklog.dto';
 import { S3Service } from '../common/s3.service';
 import { DrinkType } from '../drink-type/entities/drink-type.entity';
-import { DrinkSize, DrinkTemperature } from './enums/drinklog.enum';
 import { DeepPartial } from 'typeorm';
 
 @Injectable()

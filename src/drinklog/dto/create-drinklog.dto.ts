@@ -9,7 +9,7 @@ import {
     IsBoolean,
     IsEnum,
 } from 'class-validator';
-import { DrinkSize, DrinkTemperature } from '../enums/drinklog.enum';
+import { DrinkSize, DrinkTemperature } from 'src/common/enums';
 
 export class CreateDrinklogDto {
     @IsString()
@@ -23,6 +23,11 @@ export class CreateDrinklogDto {
     @IsInt()
     @Min(0, { message: 'Đường không thể âm' })
     sugarG: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(0, { message: 'Dung tích không thể âm' })
+    volumeMl?: number;
 
     @IsInt()
     @Min(0, { message: 'Calories không thể âm' })

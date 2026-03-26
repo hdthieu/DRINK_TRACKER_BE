@@ -8,6 +8,7 @@ import { DrinklogModule } from './drinklog/drinklog.module';
 import { HomeReceiptModule } from './home-receipt/home-receipt.module';
 import { DrinkTypeModule } from './drink-type/drink-type.module';
 import { AuthModule } from './auth/auth.module';
+import { RoadmapModule } from './roadmap/roadmap.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AuthModule } from './auth/auth.module';
     DrinkTypeModule,
     HomeReceiptModule,
     AuthModule,
+    RoadmapModule,
   ],
 
   controllers: [AppController],

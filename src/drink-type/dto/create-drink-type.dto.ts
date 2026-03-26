@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
-import { DrinkSize, DrinkTemperature } from '../../drinklog/enums/drinklog.enum';
+import { DrinkSize, DrinkTemperature } from 'src/common/enums';
 
 export class CreateDrinkTypeDto {
     @IsString()

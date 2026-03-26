@@ -2,7 +2,7 @@ import { DrinkType } from "src/drink-type/entities/drink-type.entity";
 import { HomeRecipe } from "src/home-receipt/entities/home-receipt.entity";
 import { User } from "src/user/entities/user.entity";
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { DrinkSize, DrinkTemperature } from "../enums/drinklog.enum";
+import { DrinkSize, DrinkTemperature } from "src/common/enums";
 
 @Entity('drink_logs')
 export class Drinklog {
@@ -28,6 +28,9 @@ export class Drinklog {
 
     @Column({ type: 'int' })
     sugarG: number;
+
+    @Column({ type: 'int', default: 250 })
+    volumeMl: number;
 
     @Column({ type: 'int' })
     calories: number;
@@ -59,7 +62,7 @@ export class Drinklog {
     createdAt: Date;
 
     @ManyToOne(() => User, (user) => user.logs)
-    user: User;  
+    user: User;
 
     @OneToOne(() => DrinkType)
     @JoinColumn()

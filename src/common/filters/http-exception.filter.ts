@@ -21,11 +21,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
         const exceptionResponse = exception instanceof HttpException
             ? exception.getResponse()
-            : { message: 'Internal server error 🌸' };
+            : { message: 'Internal server error 🌸', realError: (exception as any).message };
+
+        console.error('EXCEPTION CAPTURED:', exception);
 
         const message = typeof exceptionResponse === 'string'
             ? exceptionResponse
-            : (exceptionResponse as any).message || exceptionResponse;
+            : (exceptionResponse as any).message || (exceptionResponse as any).realError || exceptionResponse;
 
         const errorCode = (exceptionResponse as any).errorCode || 'UNKNOWN_ERROR';
 
