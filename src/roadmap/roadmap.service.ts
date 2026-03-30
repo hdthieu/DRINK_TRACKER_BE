@@ -7,6 +7,9 @@ import { UpdateRoadmapDto } from './dto/update-roadmap.dto';
 import { User } from '../user/entities/user.entity';
 import { MealPlan } from '../meal-plan/entities/meal-plan.entity';
 import { ActivityType } from 'src/common/enums';
+import { DrinklogService } from 'src/drinklog/drinklog.service';
+import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
+import { MealIngredient } from '../meal-plan/entities/meal-ingredient.entity';
 
 @Injectable()
 export class RoadmapService {
@@ -17,6 +20,10 @@ export class RoadmapService {
         private readonly userRepository: Repository<User>,
         @InjectRepository(MealPlan)
         private readonly mealPlanRepository: Repository<MealPlan>,
+        @InjectRepository(FoodInventory)
+        private readonly foodInventoryRepository: Repository<FoodInventory>,
+
+        private readonly drinklogService: DrinklogService,
     ) { }
 
     async create(userId: string, createRoadmapDto: CreateRoadmapDto) {
@@ -42,26 +49,86 @@ export class RoadmapService {
         return await this.roadmapRepository.find({
             where: { user: { id: userId }, date },
             order: { time: 'ASC' },
-            relations: ['mealPlan']
+            relations: ['mealPlan', 'mealPlan.ingredients', 'mealPlan.ingredients.inventoryItem']
         });
     }
 
     async update(userId: string, id: string, updateRoadmapDto: UpdateRoadmapDto) {
-        const roadmap = await this.roadmapRepository.findOne({
-            where: { id, user: { id: userId } },
-            relations: ['mealPlan']
-        });
+        const queryRunner = this.roadmapRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
 
-        if (!roadmap) throw new NotFoundException('Lộ trình không tồn tại!');
+        try {
+            const roadmap = await queryRunner.manager.findOne(UserRoadmap, {
+                where: { id, user: { id: userId } },
+                relations: ['mealPlan', 'mealPlan.ingredients', 'mealPlan.ingredients.inventoryItem']
+            });
 
-        if (updateRoadmapDto.mealPlanId) {
-            const mealPlan = await this.mealPlanRepository.findOne({ where: { id: updateRoadmapDto.mealPlanId } });
-            if (!mealPlan) throw new BadRequestException('ID thực đơn không hợp lệ!');
-            roadmap.mealPlan = mealPlan;
+            if (!roadmap) throw new NotFoundException('Lộ trình không tồn tại!');
+
+            const wasCompleted = roadmap.isCompleted;
+            const isNowCompleted = updateRoadmapDto.isCompleted ?? wasCompleted;
+
+            // --- GIAI ĐOẠN 2: Logic Tự động ---
+            if (!wasCompleted && isNowCompleted) {
+                // Case 1: Bữa ăn (Deduct stock)
+                if (roadmap.activityType === ActivityType.MEAL && roadmap.mealPlan) {
+                    const ingredients = roadmap.mealPlan.ingredients;
+                    if (ingredients && ingredients.length > 0) {
+                        for (const ingredient of ingredients) {
+                            if (ingredient.inventoryItem) {
+                                const item = ingredient.inventoryItem;
+                                const needed = ingredient.amountInBaseUnit;
+                                item.quantityInBaseUnit = Math.max(0, item.quantityInBaseUnit - needed);
+                                await queryRunner.manager.save(FoodInventory, item);
+                            }
+                        }
+                    }
+                }
+
+                // Case 2: Uống nước (Auto record DrinkLog)
+                if (roadmap.activityType === ActivityType.WATER) {
+                    const ml = this.parseVolume(roadmap.activityName) || 250;
+                    await this.drinklogService.create(userId, {
+                        drinkName: 'Nước lọc (Từ lộ trình)',
+                        volumeMl: ml,
+                        caffeineMg: 0,
+                        sugarG: 0,
+                        calories: 0,
+                        price: 0,
+                        isHomeMade: true
+                    });
+                }
+            }
+
+            if (updateRoadmapDto.mealPlanId) {
+                const mealPlan = await queryRunner.manager.findOne(MealPlan, { where: { id: updateRoadmapDto.mealPlanId } });
+                if (!mealPlan) throw new BadRequestException('ID thực đơn không hợp lệ!');
+                roadmap.mealPlan = mealPlan;
+            }
+
+            Object.assign(roadmap, updateRoadmapDto);
+            const saved = await queryRunner.manager.save(UserRoadmap, roadmap);
+
+            await queryRunner.commitTransaction();
+            return saved;
+        } catch (err) {
+            await queryRunner.rollbackTransaction();
+            throw err;
+        } finally {
+            await queryRunner.release();
         }
+    }
 
-        Object.assign(roadmap, updateRoadmapDto);
-        return await this.roadmapRepository.save(roadmap);
+    private parseVolume(text: string): number | null {
+        const match = text.match(/(\d+)\s*(ml|l)/i);
+        if (match) {
+            let val = parseInt(match[1]);
+            const unit = match[2].toLowerCase();
+            if (unit === 'l') val *= 1000;
+            return val;
+        }
+        return null;
     }
 
     async remove(userId: string, id: string) {
@@ -102,7 +169,7 @@ export class RoadmapService {
         return {
             success: true,
             message: 'Đã nạp lộ trình mẫu thành công',
-            userId: user.id  
+            userId: user.id
         };
     }
 }

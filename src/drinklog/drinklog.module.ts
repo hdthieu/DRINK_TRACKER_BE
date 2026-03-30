@@ -11,5 +11,6 @@ import { S3Service } from '../common/s3.service';
   imports: [TypeOrmModule.forFeature([Drinklog, User, DrinkType])],
   controllers: [DrinklogController],
   providers: [DrinklogService, S3Service],
+  exports: [DrinklogService],
 })
 export class DrinklogModule { }

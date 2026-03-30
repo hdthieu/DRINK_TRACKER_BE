@@ -11,11 +11,17 @@ async function bootstrap() {
     whitelist: true,
     transform: true,
     exceptionFactory: (errors) => {
-      const result = errors.reduce((acc, error) => {
-        acc[error.property] = Object.values(error.constraints || {})[0];
-        return acc;
-      }, {});
-      return new BadRequestException(result);
+      const formatErrors = (errors: any[]) => {
+        return errors.reduce((acc, error) => {
+          if (error.children && error.children.length > 0) {
+            acc[error.property] = formatErrors(error.children);
+          } else {
+            acc[error.property] = Object.values(error.constraints || {})[0];
+          }
+          return acc;
+        }, {});
+      };
+      return new BadRequestException(formatErrors(errors));
     },
   }));
 

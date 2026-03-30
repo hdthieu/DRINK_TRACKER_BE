@@ -34,14 +34,14 @@ export class User {
     @Column({ nullable: true })
     imageUrl: string;
 
-    @Column({ type: 'int', nullable: true })
-    age: number;
+    // @Column({ type: 'int', nullable: true })
+    // age: number;
 
-    @Column({ type: 'int', default: 0 })
-    exerciseTimeMinutes: number;
+    // @Column({ type: 'int', default: 0 })
+    // exerciseTimeMinutes: number;
 
-    @Column({ default: false })
-    isHighTemperature: boolean;
+    // @Column({ default: false })
+    // isHighTemperature: boolean;
 
     @OneToMany(() => HomeRecipe, (recipe) => recipe.user)
     homeRecipes: HomeRecipe[];

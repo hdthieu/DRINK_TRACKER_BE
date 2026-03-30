@@ -31,7 +31,7 @@ export class UserRoadmap {
     isCompleted: boolean;
 
     @Column({ type: 'date' })
-    date: string; // YYYY-MM-DD
+    date: string;
 
     @ManyToOne(() => User, (user) => user.roadmaps)
     user: User;

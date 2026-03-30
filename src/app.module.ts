@@ -9,6 +9,9 @@ import { HomeReceiptModule } from './home-receipt/home-receipt.module';
 import { DrinkTypeModule } from './drink-type/drink-type.module';
 import { AuthModule } from './auth/auth.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
+import { FoodInventoryModule } from './food-inventory/food-inventory.module';
+import { MealPlanModule } from './meal-plan/meal-plan.module';
+import { InventoryUnitModule } from './inventory-unit/inventory-unit.module';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { RoadmapModule } from './roadmap/roadmap.module';
     HomeReceiptModule,
     AuthModule,
     RoadmapModule,
+    FoodInventoryModule,
+    MealPlanModule,
+    InventoryUnitModule,
   ],
 
   controllers: [AppController],
