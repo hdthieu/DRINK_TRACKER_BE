@@ -12,6 +12,7 @@ import { RoadmapModule } from './roadmap/roadmap.module';
 import { FoodInventoryModule } from './food-inventory/food-inventory.module';
 import { MealPlanModule } from './meal-plan/meal-plan.module';
 import { InventoryUnitModule } from './inventory-unit/inventory-unit.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { InventoryUnitModule } from './inventory-unit/inventory-unit.module';
     FoodInventoryModule,
     MealPlanModule,
     InventoryUnitModule,
+    NotificationsModule,
   ],
 
   controllers: [AppController],

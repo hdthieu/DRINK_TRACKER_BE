@@ -10,6 +10,7 @@ import { ActivityType } from 'src/common/enums';
 import { DrinklogService } from 'src/drinklog/drinklog.service';
 import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
 import { MealIngredient } from '../meal-plan/entities/meal-ingredient.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class RoadmapService {
@@ -24,6 +25,7 @@ export class RoadmapService {
         private readonly foodInventoryRepository: Repository<FoodInventory>,
 
         private readonly drinklogService: DrinklogService,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     async create(userId: string, createRoadmapDto: CreateRoadmapDto) {
@@ -81,6 +83,12 @@ export class RoadmapService {
                                 const needed = ingredient.amountInBaseUnit;
                                 item.quantityInBaseUnit = Math.max(0, item.quantityInBaseUnit - needed);
                                 await queryRunner.manager.save(FoodInventory, item);
+
+                                // Check if this specific item is now low
+                                if (item.quantityInBaseUnit === 0 || (item.lowStockThreshold && item.quantityInBaseUnit <= item.lowStockThreshold)) {
+                                    // Trigger push notification (async)
+                                    this.notificationsService.sendLowStockAlert(userId, 1).catch(e => console.error("Error sending push:", e));
+                                }
                             }
                         }
                     }

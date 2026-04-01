@@ -8,11 +8,13 @@ import { MealPlan } from '../meal-plan/entities/meal-plan.entity';
 import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
 import { MealIngredient } from '../meal-plan/entities/meal-ingredient.entity';
 import { DrinklogModule } from 'src/drinklog/drinklog.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([UserRoadmap, User, MealPlan, FoodInventory, MealIngredient]),
-        DrinklogModule
+        DrinklogModule,
+        NotificationsModule
     ],
     controllers: [RoadmapController],
     providers: [RoadmapService],
