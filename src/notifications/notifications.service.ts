@@ -47,12 +47,21 @@ export class NotificationsService {
         return await this.subscriptionRepo.save(newSub);
     }
 
-    async sendNotification(userId: string, title: string, body: string, icon = '/icon-192x192.png') {
+    async sendNotification(userId: string, title: string, body: string, icon = 'https://cdn-icons-png.flaticon.com/512/3256/3256157.png') {
         const subs = await this.subscriptionRepo.find({ where: { user: { id: userId } } });
-        const payload = JSON.stringify({ title, body, icon });
+        const payload = JSON.stringify({
+            title,
+            body,
+            icon,
+            badge: icon,
+            timestamp: Date.now()
+        });
 
         const promises = subs.map((sub) =>
-            webpush.sendNotification(sub.subscription, payload).catch((err) => {
+            webpush.sendNotification(sub.subscription, payload, {
+                TTL: 60 * 60 * 24, // 24 hours
+                urgency: 'high'
+            }).catch((err) => {
                 if (err.statusCode === 404 || err.statusCode === 410) {
                     this.logger.log(`Subscription expired, removing...`);
                     return this.subscriptionRepo.remove(sub);
