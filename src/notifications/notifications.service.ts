@@ -49,6 +49,7 @@ export class NotificationsService {
 
     async sendNotification(userId: string, title: string, body: string, icon = 'https://cdn-icons-png.flaticon.com/512/3256/3256157.png') {
         const subs = await this.subscriptionRepo.find({ where: { user: { id: userId } } });
+        this.logger.log(`Found ${subs.length} push subscriptions for user ${userId}`);
         const payload = JSON.stringify({
             title,
             body,

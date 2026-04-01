@@ -14,7 +14,8 @@ export class NotificationsController {
     }
 
     @Post('test')
-    test(@Request() req) {
+    async test(@Request() req) {
+        console.log(`[NotificationTest] Triggered by user: ${req.user.sub}`);
         return this.service.sendNotification(
             req.user.sub,
             '🦄 Princess ơi!',
