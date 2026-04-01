@@ -6,7 +6,7 @@ import { UpdateDrinklogDto } from './dto/update-drinklog.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
-@Controller('drinklog')
+@Controller('drink-log')
 export class DrinklogController {
   constructor(private readonly drinklogService: DrinklogService) { }
 
