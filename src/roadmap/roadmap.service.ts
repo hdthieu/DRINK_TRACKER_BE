@@ -86,8 +86,8 @@ export class RoadmapService {
 
                                 // Check if this specific item is now low
                                 if (item.quantityInBaseUnit === 0 || (item.lowStockThreshold && item.quantityInBaseUnit <= item.lowStockThreshold)) {
-                                    // Trigger push notification (async)
-                                    this.notificationsService.sendLowStockAlert(userId, 1).catch(e => console.error("Error sending push:", e));
+                                    // Trigger smart daily check instead of individual alert
+                                    this.notificationsService.checkAndSendDailyLowStockAlert(userId).catch(e => console.error("Error sending daily push:", e));
                                 }
                             }
                         }

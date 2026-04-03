@@ -2,8 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PushSubscription as SubscriptionEntity } from './entities/push-subscription.entity';
+import { User } from '../user/entities/user.entity';
+import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
 import * as webpush from 'web-push';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class NotificationsService {
@@ -12,6 +15,10 @@ export class NotificationsService {
     constructor(
         @InjectRepository(SubscriptionEntity)
         private readonly subscriptionRepo: Repository<SubscriptionEntity>,
+        @InjectRepository(User)
+        private readonly userRepo: Repository<User>,
+        @InjectRepository(FoodInventory)
+        private readonly inventoryRepo: Repository<FoodInventory>,
         private configService: ConfigService,
     ) {
         const publicVapidKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
@@ -49,7 +56,6 @@ export class NotificationsService {
 
     async sendNotification(userId: string, title: string, body: string, icon = 'https://cdn-icons-png.flaticon.com/512/3256/3256157.png') {
         const subs = await this.subscriptionRepo.find({ where: { user: { id: userId } } });
-        this.logger.log(`Found ${subs.length} push subscriptions for user ${userId}`);
         const payload = JSON.stringify({
             title,
             body,
@@ -74,11 +80,78 @@ export class NotificationsService {
         return Promise.all(promises);
     }
 
-    async sendLowStockAlert(userId: string, itemCount: number) {
+    async sendLowStockAlert(userId: string, itemName: string) {
         return this.sendNotification(
             userId,
-            '🚨 Kho lương thực sắp hết Princess ơi!',
-            `Có ${itemCount} món vừa rơi vào vùng "nguy hiểm". Chị xem lại kho nhé! 🛍️`,
+            '🚨 Kho lương thực cần Princess tiếp tế!',
+            `Món "${itemName}" vừa rơi vào vùng báo động đỏ rồi ạ. Chị xem lại kho nhé! 🛍️✨`,
         );
+    }
+
+    // --- AUTOMATED DAILY AUDIT ---
+    // This runs every day at 09:00 AM
+    @Cron(CronExpression.EVERY_DAY_AT_9AM)
+    async handleMorningAudit() {
+        this.logger.log('Starting Morning Inventory Audit for all users...');
+        const users = await this.userRepo.find();
+        for (const user of users) {
+            await this.checkAndSendDailyLowStockAlert(user.id);
+        }
+    }
+
+    async checkAndSendDailyLowStockAlert(userId: string) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (!user || !user.isLowStockAlertEnabled) {
+            this.logger.log(`Skipping alert for user ${userId}, feature disabled or user not found.`);
+            return;
+        }
+
+        // 1. Check if we already sent an alert today
+        const today = new Date();
+        if (user.lastLowStockAlertAt) {
+            const lastAlertDate = new Date(user.lastLowStockAlertAt);
+            if (
+                lastAlertDate.getDate() === today.getDate() &&
+                lastAlertDate.getMonth() === today.getMonth() &&
+                lastAlertDate.getFullYear() === today.getFullYear()
+            ) {
+                this.logger.log(`Skipping alert for user ${userId}, already sent today.`);
+                return;
+            }
+        }
+
+        // 2. Scan Inventory for Low Stock items
+        const lowStockItems = await this.inventoryRepo.createQueryBuilder('inventory')
+            .where('inventory.userId = :userId', { userId })
+            .andWhere('(inventory.quantityInBaseUnit <= inventory.lowStockThreshold OR inventory.quantityInBaseUnit = 0)')
+            .getMany();
+
+        if (lowStockItems.length === 0) return;
+
+        // 3. Assemble the Elegant Report
+        const itemNames = lowStockItems.map(item => item.itemName).join(', ');
+        const title = '🛍️ Lời nhắc tiếp tế lương thực';
+        const body = `Princess ơi, kho của chị đang thiếu các món: ${itemNames} ạ. Đừng quên mua sắm nhé! ✨🥂💎`;
+
+        try {
+            await this.sendNotification(userId, title, body);
+
+            // 4. Update the "Memory"
+            user.lastLowStockAlertAt = new Date();
+            await this.userRepo.save(user);
+            this.logger.log(`Successfully sent daily summary to user ${userId}`);
+        } catch (err) {
+            this.logger.error(`Failed to send daily summary to user ${userId}`, err);
+        }
+    }
+
+    async getSettings(userId: string) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        return { isLowStockAlertEnabled: user?.isLowStockAlertEnabled || false };
+    }
+
+    async updateSettings(userId: string, enabled: boolean) {
+        await this.userRepo.update(userId, { isLowStockAlertEnabled: enabled });
+        return { success: true, isLowStockAlertEnabled: enabled };
     }
 }

@@ -54,5 +54,11 @@ export class User {
 
     @OneToMany(() => MealPlan, (mealPlan) => mealPlan.user)
     mealPlans: MealPlan[];
+
+    @Column({ type: 'timestamp', nullable: true })
+    lastLowStockAlertAt: Date;
+
+    @Column({ default: false })
+    isLowStockAlertEnabled: boolean;
 }
 

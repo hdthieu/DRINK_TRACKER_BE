@@ -13,12 +13,14 @@ import { FoodInventoryModule } from './food-inventory/food-inventory.module';
 import { MealPlanModule } from './meal-plan/meal-plan.module';
 import { InventoryUnitModule } from './inventory-unit/inventory-unit.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

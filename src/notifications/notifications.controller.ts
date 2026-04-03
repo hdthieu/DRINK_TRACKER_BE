@@ -15,11 +15,20 @@ export class NotificationsController {
 
     @Post('test')
     async test(@Request() req) {
-        console.log(`[NotificationTest] Triggered by user: ${req.user.sub}`);
         return this.service.sendNotification(
             req.user.sub,
             '🦄 Princess ơi!',
             'Thông báo này hiện ra là mọi thứ đã sẵn sàng cho hành trình mới rồi ạ! ✨'
         );
+    }
+
+    @Get('settings')
+    getSettings(@Request() req) {
+        return this.service.getSettings(req.user.sub);
+    }
+
+    @Post('settings')
+    updateSettings(@Request() req, @Body('enabled') enabled: boolean) {
+        return this.service.updateSettings(req.user.sub, enabled);
     }
 }
