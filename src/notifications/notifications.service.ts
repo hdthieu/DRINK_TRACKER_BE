@@ -90,7 +90,7 @@ export class NotificationsService {
 
     // --- AUTOMATED DAILY AUDIT ---
     // This runs every day at 09:00 AM
-    @Cron(CronExpression.EVERY_DAY_AT_9AM)
+    @Cron(CronExpression.EVERY_DAY_AT_6AM)
     async handleMorningAudit() {
         this.logger.log('Starting Morning Inventory Audit for all users...');
         const users = await this.userRepo.find();
@@ -108,6 +108,8 @@ export class NotificationsService {
 
         // 1. Check if we already sent an alert today
         const today = new Date();
+        // Temporary Commented out for Princess to test multiple times today ✨🥂
+        /*
         if (user.lastLowStockAlertAt) {
             const lastAlertDate = new Date(user.lastLowStockAlertAt);
             if (
@@ -119,12 +121,15 @@ export class NotificationsService {
                 return;
             }
         }
+        */
 
         // 2. Scan Inventory for Low Stock items
         const lowStockItems = await this.inventoryRepo.createQueryBuilder('inventory')
             .where('inventory.userId = :userId', { userId })
             .andWhere('(inventory.quantityInBaseUnit <= inventory.lowStockThreshold OR inventory.quantityInBaseUnit = 0)')
             .getMany();
+
+        this.logger.log(`Found ${lowStockItems.length} low stock items for user ${userId}`);
 
         if (lowStockItems.length === 0) return;
 
