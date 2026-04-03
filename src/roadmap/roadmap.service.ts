@@ -77,6 +77,7 @@ export class RoadmapService {
                 if (roadmap.activityType === ActivityType.MEAL && roadmap.mealPlan) {
                     const ingredients = roadmap.mealPlan.ingredients;
                     if (ingredients && ingredients.length > 0) {
+                        let hasLowStock = false;
                         for (const ingredient of ingredients) {
                             if (ingredient.inventoryItem) {
                                 const item = ingredient.inventoryItem;
@@ -84,12 +85,14 @@ export class RoadmapService {
                                 item.quantityInBaseUnit = Math.max(0, item.quantityInBaseUnit - needed);
                                 await queryRunner.manager.save(FoodInventory, item);
 
-                                // Check if this specific item is now low
+                                // Check if this specific item is now low or empty
                                 if (item.quantityInBaseUnit === 0 || (item.lowStockThreshold && item.quantityInBaseUnit <= item.lowStockThreshold)) {
-                                    // Trigger smart daily check instead of individual alert
-                                    this.notificationsService.checkAndSendDailyLowStockAlert(userId).catch(e => console.error("Error sending daily push:", e));
+                                    hasLowStock = true;
                                 }
                             }
+                        }
+                        if (hasLowStock) {
+                            this.notificationsService.checkAndSendDailyLowStockAlert(userId).catch(e => console.error("Error sending daily push:", e));
                         }
                     }
                 }
