@@ -17,10 +17,16 @@ export class UserService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
-        // relations: ['logs']
       });
       if (!user) throw new NotFoundException('User không tồn tại!');
-      return user;
+      const baseWeight = user.weight || 60;
+      const recommendedGoal = Math.round(baseWeight * 35);
+
+      return {
+        ...user,
+        dailyWaterGoal: user.dailyWaterGoal || recommendedGoal,
+        recommendedWaterGoal: recommendedGoal,
+      };
     } catch (error) {
       console.error('Error in myProfile service:', error);
       throw error;

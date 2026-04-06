@@ -34,15 +34,6 @@ export class User {
     @Column({ nullable: true })
     imageUrl: string;
 
-    // @Column({ type: 'int', nullable: true })
-    // age: number;
-
-    // @Column({ type: 'int', default: 0 })
-    // exerciseTimeMinutes: number;
-
-    // @Column({ default: false })
-    // isHighTemperature: boolean;
-
     @OneToMany(() => HomeRecipe, (recipe) => recipe.user)
     homeRecipes: HomeRecipe[];
 
@@ -60,5 +51,20 @@ export class User {
 
     @Column({ default: false })
     isLowStockAlertEnabled: boolean;
+
+    @Column({ type: 'int', nullable: true, default: 2000 })
+    dailyWaterGoal: number;
+
+    @Column({ default: false })
+    isWaterReminderEnabled: boolean;
+
+    @Column({ nullable: true, default: '08:00' })
+    reminderStartTime: string;
+
+    @Column({ nullable: true, default: '22:00' })
+    reminderEndTime: string;
+
+    @Column({ default: 120 })
+    reminderInterval: number;
 }
 
