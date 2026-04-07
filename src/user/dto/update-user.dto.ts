@@ -43,4 +43,19 @@ export class UpdateUserDto {
     @IsOptional()
     @IsBoolean()
     isHighTemperature?: boolean;
+
+    @IsOptional()
+    @IsString()
+    reminderStartTime?: string;
+
+    @IsOptional()
+    @IsString()
+    reminderEndTime?: string;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @Min(5)
+    @Max(1440)
+    reminderInterval?: number;
 }

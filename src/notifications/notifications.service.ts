@@ -59,7 +59,21 @@ export class NotificationsService {
     }
 
     async sendNotification(userId: string, title: string, body: string, icon = 'https://cdn-icons-png.flaticon.com/512/3256/3256157.png') {
-        const subs = await this.subscriptionRepo.find({ where: { user: { id: userId } } });
+        const allSubs = await this.subscriptionRepo.find({
+            where: { user: { id: userId } },
+            order: { createdAt: 'DESC' }
+        });
+
+        // Deduplicate by endpoint to avoid spamming the same device
+        const uniqueEndpoints = new Set();
+        const subs = allSubs.filter(sub => {
+            const endpoint = sub.subscription?.endpoint;
+            if (!endpoint || uniqueEndpoints.has(endpoint)) return false;
+            uniqueEndpoints.add(endpoint);
+            return true;
+        });
+
+        this.logger.log(`Filtered to ${subs.length} unique push subscriptions for user ${userId} (from ${allSubs.length} total)`);
         const payload = JSON.stringify({
             title,
             body,
@@ -93,7 +107,7 @@ export class NotificationsService {
     }
 
     // --- AUTOMATED DAILY AUDIT ---
-    // This runs every day at 09:00 AM
+    // This runs every day at 06:00 AM
     @Cron(CronExpression.EVERY_DAY_AT_6AM)
     async handleMorningAudit() {
         this.logger.log('Starting Morning Inventory Audit for all users...');
@@ -110,10 +124,8 @@ export class NotificationsService {
             return;
         }
 
-        // 1. Check if we already sent an alert today
+        // 1. Check if we already sent an alert today (Anti-Spam!) ✨🥂
         const today = new Date();
-        // Temporary Commented out for Princess to test multiple times today ✨🥂
-        /*
         if (user.lastLowStockAlertAt) {
             const lastAlertDate = new Date(user.lastLowStockAlertAt);
             if (
@@ -125,7 +137,6 @@ export class NotificationsService {
                 return;
             }
         }
-        */
 
         // 2. Scan Inventory for Low Stock items
         const lowStockItems = await this.inventoryRepo.createQueryBuilder('inventory')
@@ -212,7 +223,7 @@ export class NotificationsService {
                         await this.sendNotification(
                             user.id,
                             '💎 Thủy hợp lộng lẫy, Princess!',
-                            `Princess ơi, Híu thấy chị đang thiếu khoảng ${missing}ml nước so với lộ trình rạng rỡ hôm nay ạ. Chị hãy uống một chút nước nhé! ✨🥂🥂`,
+                            `Để bắt kịp lộ trình rạng rỡ hôm nay, Princess nên uống thêm khoảng ${missing}ml nước nhé! Híu vẫn luôn ở đây dõi theo chị ạ! ✨🥂🥂`,
                         );
                         this.logger.log(`Sent water reminder to user ${user.id}`);
                     }

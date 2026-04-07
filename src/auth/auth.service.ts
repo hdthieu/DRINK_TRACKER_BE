@@ -88,8 +88,8 @@ export class AuthService {
     private async generateTokensResponse(user: User) {
         const payload = { sub: user.id, email: user.email };
         const tokens = {
-            access_token: await this.jwtService.signAsync(payload, { expiresIn: '15m' }),
-            refresh_token: await this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+            access_token: await this.jwtService.signAsync(payload, { expiresIn: '30d' }),
+            refresh_token: await this.jwtService.signAsync(payload, { expiresIn: '30d' }),
         };
 
         user.refreshToken = tokens.refresh_token;

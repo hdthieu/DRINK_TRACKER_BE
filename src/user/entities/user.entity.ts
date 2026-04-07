@@ -49,7 +49,7 @@ export class User {
     @Column({ type: 'timestamp', nullable: true })
     lastLowStockAlertAt: Date;
 
-    @Column({ default: false })
+    @Column({ default: true })
     isLowStockAlertEnabled: boolean;
 
     @Column({ type: 'int', nullable: true, default: 2000 })
