@@ -8,6 +8,7 @@ import * as webpush from 'web-push';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Drinklog as DrinkLog } from '../drinklog/entities/drinklog.entity';
+import { UserRoadmap } from '../roadmap/entities/roadmap.entity';
 import { Between } from 'typeorm';
 
 @Injectable()
@@ -23,6 +24,8 @@ export class NotificationsService {
         private readonly inventoryRepo: Repository<FoodInventory>,
         @InjectRepository(DrinkLog)
         private readonly drinkLogRepo: Repository<DrinkLog>,
+        @InjectRepository(UserRoadmap)
+        private readonly roadmapRepo: Repository<UserRoadmap>,
         private configService: ConfigService,
     ) {
         const publicVapidKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
@@ -40,14 +43,13 @@ export class NotificationsService {
     }
 
     async subscribe(userId: string, subscription: any, userAgent: string) {
-        // Find existing subscription for this user and endpoint to avoid duplicates
-        const existing = await this.subscriptionRepo.findOne({
-            where: {
-                user: { id: userId },
-                subscription: { endpoint: subscription.endpoint } as any
-            }
+        // Find existing subscription for this user. 
+        // We fetch all and find in memory to be 100% sure about the endpoint match 🕵️‍♀️
+        const allSubs = await this.subscriptionRepo.find({
+            where: { user: { id: userId } }
         });
 
+        const existing = allSubs.find(s => s.subscription?.endpoint === subscription.endpoint);
         if (existing) return existing;
 
         const newSub = this.subscriptionRepo.create({
@@ -84,7 +86,7 @@ export class NotificationsService {
 
         const promises = subs.map((sub) =>
             webpush.sendNotification(sub.subscription, payload, {
-                TTL: 60 * 60 * 24, // 24 hours
+                TTL: 60 * 60 * 24,
                 urgency: 'high'
             }).catch((err) => {
                 if (err.statusCode === 404 || err.statusCode === 410) {
@@ -95,7 +97,8 @@ export class NotificationsService {
             }),
         );
 
-        return Promise.all(promises);
+        await Promise.all(promises);
+        return subs.length;
     }
 
     async sendLowStockAlert(userId: string, itemName: string) {
@@ -124,19 +127,9 @@ export class NotificationsService {
             return;
         }
 
-        // 1. Check if we already sent an alert today (Anti-Spam!) ✨🥂
-        const today = new Date();
-        if (user.lastLowStockAlertAt) {
-            const lastAlertDate = new Date(user.lastLowStockAlertAt);
-            if (
-                lastAlertDate.getDate() === today.getDate() &&
-                lastAlertDate.getMonth() === today.getMonth() &&
-                lastAlertDate.getFullYear() === today.getFullYear()
-            ) {
-                this.logger.log(`Skipping alert for user ${userId}, already sent today.`);
-                return;
-            }
-        }
+        // --- High Vigilance Mode: Always check and alert if items are low 🤴✨ ---
+        // We've removed the daily limit so Princess gets instant feedback during meals
+        // AND a fresh reminder every morning at 6 AM if still not replenished.
 
         // 2. Scan Inventory for Low Stock items
         const lowStockItems = await this.inventoryRepo.createQueryBuilder('inventory')
@@ -250,16 +243,54 @@ export class NotificationsService {
                         ? `Chào ngày mới lộng lẫy, Princess! Chị hãy khởi đầu ngày mới bằng một ly nước thanh mát để luôn rạng rỡ nhé! ✨🥂💎`
                         : `Princess ơi, đã đến giờ nạp thêm sự rạng rỡ rồi ạ! Chị hãy uống một ly nước để luôn xinh đẹp nhé! ✨�🥂`;
 
-                    await this.sendNotification(user.id, '💎 Lời nhắc từ Quản gia Híu', message);
+                    const sentCount = await this.sendNotification(user.id, '💎 Lời nhắc từ Quản gia Híu', message);
 
-                    // Update the "Memory"
-                    user.lastWaterReminderAt = now;
-                    await this.userRepo.save(user);
-                    this.logger.log(`Sent hydration notification to user ${user.id}`);
+                    if (sentCount > 0) {
+                        user.lastWaterReminderAt = now;
+                        await this.userRepo.save(user);
+                        this.logger.log(`Sent hydration notification to user ${user.id} (${sentCount} devices)`);
+                    } else {
+                        this.logger.warn(`Tried to send hydration reminder to user ${user.id} but no active subscriptions found!`);
+                    }
                 }
             } catch (err) {
                 this.logger.error(`Error in obedient water reminder for user ${user.id}:`, err);
             }
+        }
+    }
+
+    // --- AUTOMATED ROADMAP REMINDERS ---
+    @Cron('* * * * *')
+    async handleRoadmapReminders() {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+
+        const currentTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        const currentDate = now.toISOString().split('T')[0];
+
+        // Find roadmaps for today at this exact time that are NOT completed
+        const roadmaps = await this.roadmapRepo.find({
+            where: {
+                date: currentDate,
+                time: currentTime,
+                isCompleted: false,
+            },
+            relations: ['user']
+        });
+
+        if (roadmaps.length === 0) return;
+
+        this.logger.log(`Found ${roadmaps.length} roadmap activities to notify for at ${currentTime}`);
+
+        for (const item of roadmaps) {
+            if (!item.user) continue;
+
+            const title = `🔔 Ting ting!`;
+            const body = `Chị ơi, đến giờ thực hiện: "${item.activityName}" rồi ạ! Princess hãy bắt đầu ngay để luôn xinh đẹp nhé! ✨💎`;
+
+            await this.sendNotification(item.user.id, title, body);
+            this.logger.log(`Sent roadmap notification to user ${item.user.id} for task ${item.activityName}`);
         }
     }
 

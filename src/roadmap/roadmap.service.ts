@@ -9,7 +9,6 @@ import { MealPlan } from '../meal-plan/entities/meal-plan.entity';
 import { ActivityType } from 'src/common/enums';
 import { DrinklogService } from 'src/drinklog/drinklog.service';
 import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
-import { MealIngredient } from '../meal-plan/entities/meal-ingredient.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -38,10 +37,11 @@ export class RoadmapService {
             if (!mealPlan) throw new BadRequestException('ID thực đơn không hợp lệ!');
         }
 
+        const { mealPlanId, ...cleanDto } = createRoadmapDto;
         const roadmap = this.roadmapRepository.create({
-            ...createRoadmapDto,
+            ...cleanDto,
             user,
-            mealPlan: mealPlan || undefined,
+            mealPlan,
         });
 
         return await this.roadmapRepository.save(roadmap);
@@ -85,8 +85,10 @@ export class RoadmapService {
                                 item.quantityInBaseUnit = Math.max(0, item.quantityInBaseUnit - needed);
                                 await queryRunner.manager.save(FoodInventory, item);
 
-                                // Check if this specific item is now low or empty
-                                if (item.quantityInBaseUnit === 0 || (item.lowStockThreshold && item.quantityInBaseUnit <= item.lowStockThreshold)) {
+                                const isZero = item.quantityInBaseUnit <= 0;
+                                const isBelowThreshold = item.lowStockThreshold !== null && item.lowStockThreshold !== undefined && item.quantityInBaseUnit <= item.lowStockThreshold;
+
+                                if (isZero || isBelowThreshold) {
                                     hasLowStock = true;
                                 }
                             }
@@ -112,13 +114,19 @@ export class RoadmapService {
                 }
             }
 
-            if (updateRoadmapDto.mealPlanId) {
-                const mealPlan = await queryRunner.manager.findOne(MealPlan, { where: { id: updateRoadmapDto.mealPlanId } });
-                if (!mealPlan) throw new BadRequestException('ID thực đơn không hợp lệ!');
-                roadmap.mealPlan = mealPlan;
+            if (updateRoadmapDto.mealPlanId !== undefined) {
+                if (updateRoadmapDto.mealPlanId) {
+                    const mealPlan = await queryRunner.manager.findOne(MealPlan, { where: { id: updateRoadmapDto.mealPlanId } });
+                    if (!mealPlan) throw new BadRequestException('ID thực đơn không hợp lệ!');
+                    roadmap.mealPlan = mealPlan;
+                } else {
+                    roadmap.mealPlan = null;
+                }
             }
 
-            Object.assign(roadmap, updateRoadmapDto);
+            // Remove mealPlanId from dto to prevent Object.assign from failing on non-existent column
+            const { mealPlanId, ...cleanDto } = updateRoadmapDto;
+            Object.assign(roadmap, cleanDto);
             const saved = await queryRunner.manager.save(UserRoadmap, roadmap);
 
             await queryRunner.commitTransaction();

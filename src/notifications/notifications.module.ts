@@ -6,9 +6,10 @@ import { PushSubscription } from './entities/push-subscription.entity';
 import { User } from '../user/entities/user.entity';
 import { FoodInventory } from '../food-inventory/entities/food-inventory.entity';
 import { Drinklog as DrinkLog } from '../drinklog/entities/drinklog.entity';
+import { UserRoadmap } from '../roadmap/entities/roadmap.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([PushSubscription, User, FoodInventory, DrinkLog])],
+    imports: [TypeOrmModule.forFeature([PushSubscription, User, FoodInventory, DrinkLog, UserRoadmap])],
     controllers: [NotificationsController],
     providers: [NotificationsService],
     exports: [NotificationsService],

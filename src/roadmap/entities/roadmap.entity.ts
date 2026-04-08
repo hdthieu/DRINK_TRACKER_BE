@@ -25,8 +25,8 @@ export class UserRoadmap {
     activityType: ActivityType;
 
     @ManyToOne(() => MealPlan, { nullable: true })
-    mealPlan: MealPlan;
-    
+    mealPlan: MealPlan | null;
+
     @Column({ default: false })
     isCompleted: boolean;
 
