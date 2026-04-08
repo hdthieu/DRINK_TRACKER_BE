@@ -47,6 +47,9 @@ export class User {
     mealPlans: MealPlan[];
 
     @Column({ type: 'timestamp', nullable: true })
+    lastWaterReminderAt: Date;
+
+    @Column({ type: 'timestamp', nullable: true })
     lastLowStockAlertAt: Date;
 
     @Column({ default: true })

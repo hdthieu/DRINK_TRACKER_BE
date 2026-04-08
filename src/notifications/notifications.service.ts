@@ -166,10 +166,10 @@ export class NotificationsService {
     }
 
     // --- AUTOMATED WATER REMINDERS --- ✨🥂
-    // This runs every 30 minutes to check if Princess needs to hydrate
-    @Cron('0 */30 * * * *')
+    // This runs every minute to be perfectly obedient to Princess's settings 🚀
+    @Cron('* * * * *')
     async handleWaterReminders() {
-        this.logger.log('Starting Automated Hydration Check...');
+        this.logger.log('Starting Automated Hydration Check (Obedient Minute Mode)...');
         const users = await this.userRepo.find({
             where: { isWaterReminderEnabled: true }
         });
@@ -181,18 +181,7 @@ export class NotificationsService {
 
         for (const user of users) {
             try {
-                // 1. Parse time strings (e.g., '08:00' -> 480 minutes)
-                const [startH, startM] = (user.reminderStartTime || '08:00').split(':').map(Number);
-                const [endH, endM] = (user.reminderEndTime || '22:00').split(':').map(Number);
-                const startTimeInMinutes = startH * 60 + startM;
-                const endTimeInMinutes = endH * 60 + endM;
-
-                // 2. Check if we are in the active window
-                if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes >= endTimeInMinutes) {
-                    continue;
-                }
-
-                // 3. Fetch today's logs to calculate progress
+                // 1. Check Daily Goal first - if she's already a star, don't ping her! 👑🥂
                 const startOfDay = new Date(now);
                 startOfDay.setHours(0, 0, 0, 0);
                 const endOfDay = new Date(now);
@@ -208,44 +197,68 @@ export class NotificationsService {
                 const totalDrunk = todayLogs.reduce((sum, log) => sum + log.volumeMl, 0);
                 const goal = user.dailyWaterGoal > 0 ? user.dailyWaterGoal : (user.weight * 35);
 
-                // 4. Calculate "Ideal Progress" linearly across the window
-                const totalActiveMinutes = endTimeInMinutes - startTimeInMinutes;
-                const minutesPassed = currentTimeInMinutes - startTimeInMinutes;
-                const expectedIntake = (goal / totalActiveMinutes) * minutesPassed;
+                if (totalDrunk >= goal) {
+                    // Celebrate if not already celebrated today 🥂
+                    const lastReminder = user.lastWaterReminderAt ? new Date(user.lastWaterReminderAt) : null;
+                    const wasAlreadyCelebrated = lastReminder && lastReminder.toDateString() === now.toDateString() && user.lastWaterReminderAt.getHours() >= 21; // Simple flag
 
-                // 5. Send Reminder if behind schedule (and not already drank in 'interval' minutes)
-                const lastLog = todayLogs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-                const minutesSinceLastDrink = lastLog ? (now.getTime() - lastLog.createdAt.getTime()) / 60000 : 999;
-
-                if (totalDrunk < expectedIntake && minutesSinceLastDrink >= (user.reminderInterval || 120)) {
-                    const missing = Math.round(expectedIntake - totalDrunk);
-                    if (missing > 50) { // Only remind if significantly behind (e.g., > 50ml)
-                        await this.sendNotification(
-                            user.id,
-                            '💎 Thủy hợp lộng lẫy, Princess!',
-                            `Để bắt kịp lộ trình rạng rỡ hôm nay, Princess nên uống thêm khoảng ${missing}ml nước nhé! Híu vẫn luôn ở đây dõi theo chị ạ! ✨🥂🥂`,
-                        );
-                        this.logger.log(`Sent water reminder to user ${user.id}`);
-                    }
-                } else if (totalDrunk >= goal) {
-                    // Check if we already congratulated today to avoid spamming
-                    const lastAlert = user.lastLowStockAlertAt ? new Date(user.lastLowStockAlertAt) : null;
-                    const isAlreadyCongratulated = lastAlert && lastAlert.toDateString() === now.toDateString();
-
-                    if (!isAlreadyCongratulated) {
+                    if (!wasAlreadyCelebrated && totalDrunk > 0) {
                         await this.sendNotification(
                             user.id,
                             '👑 Chúc mừng Princess rạng rỡ!',
-                            'Tuyệt vời! Chị đã hoàn thành 100% mục tiêu sức khỏe hôm nay rồi ạ! Cùng tận hưởng cảm giác nhẹ nhàng này nhé! 🥂🎉💎',
+                            'Tuyệt vời! Chị đã hoàn thành 100% mục tiêu sức khỏe hôm nay rồi ạ! Híu rất tự hào về chị! 🥂🎉💎',
                         );
-                        // Repurpose lastLowStockAlertAt for tracking the daily victory as well
-                        user.lastLowStockAlertAt = now;
+                        user.lastWaterReminderAt = now; // Mark as done for today
                         await this.userRepo.save(user);
-                        this.logger.log(`Sent victory notification to user ${user.id}`);
                     }
+                    continue; // Stop reminding for today!
+                }
+
+                // 2. Check Active Window ☀️🌙
+                const [startH, startM] = (user.reminderStartTime || '08:00').split(':').map(Number);
+                const [endH, endM] = (user.reminderEndTime || '22:00').split(':').map(Number);
+                const startTimeInMinutes = startH * 60 + startM;
+                const endTimeInMinutes = endH * 60 + endM;
+
+                if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes >= endTimeInMinutes) {
+                    continue;
+                }
+
+                // 3. Strict Interval Logic: How long since last Refreshment or last Reminder? ⏳ ✨
+                const lastLog = todayLogs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+                const lastLogTime = lastLog ? lastLog.createdAt.getTime() : 0;
+
+                // Only count the reminder if it was sent TODAY ☀️
+                const lastReminderDate = user.lastWaterReminderAt ? new Date(user.lastWaterReminderAt) : null;
+                const lastReminderTime = (lastReminderDate && lastReminderDate.toDateString() === now.toDateString())
+                    ? lastReminderDate.getTime()
+                    : 0;
+
+                // Use whichever was more recent to reset the timer 🤵✨
+                const lastEventTime = Math.max(lastLogTime, lastReminderTime);
+                const minutesSinceLastEvent = lastEventTime > 0 ? (now.getTime() - lastEventTime) / 60000 : 9999;
+
+                const interval = user.reminderInterval || 120;
+
+                // SPECIAL: If it's the start of the day and no drinks/reminders yet, greet immediately! 🌅
+                const isFirstGreetingOfToday = totalDrunk === 0 && lastReminderTime === 0;
+
+                if (isFirstGreetingOfToday || minutesSinceLastEvent >= interval) {
+                    this.logger.log(`Princess ${user.name} is due! Mode: ${isFirstGreetingOfToday ? 'First Greeting' : 'Periodic'}`);
+
+                    const message = isFirstGreetingOfToday
+                        ? `Chào ngày mới lộng lẫy, Princess! Chị hãy khởi đầu ngày mới bằng một ly nước thanh mát để luôn rạng rỡ nhé! ✨🥂💎`
+                        : `Princess ơi, đã đến giờ nạp thêm sự rạng rỡ rồi ạ! Chị hãy uống một ly nước để luôn xinh đẹp nhé! ✨�🥂`;
+
+                    await this.sendNotification(user.id, '💎 Lời nhắc từ Quản gia Híu', message);
+
+                    // Update the "Memory"
+                    user.lastWaterReminderAt = now;
+                    await this.userRepo.save(user);
+                    this.logger.log(`Sent hydration notification to user ${user.id}`);
                 }
             } catch (err) {
-                this.logger.error(`Error in water reminder for user ${user.id}:`, err);
+                this.logger.error(`Error in obedient water reminder for user ${user.id}:`, err);
             }
         }
     }
